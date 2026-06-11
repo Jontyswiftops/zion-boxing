@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Zion Boxing | Dashboard</title>
+<style>
+  :root{--bg:#0a0a0a;--panel:#141414;--panel2:#1c1c1c;--line:#2c2c2c;--text:#f2f2ee;--muted:#a3a39a;--accent:#ffd200;--accent2:#ffb300;--warn:#ff6b6b;}
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;background:radial-gradient(1100px 600px at 80% -10%,#1c1808,var(--bg) 60%);color:var(--text);min-height:100vh;padding:28px 20px 60px;}
+  .wrap{max-width:860px;margin:0 auto;}
+  header{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:14px;border-bottom:1px solid var(--line);padding-bottom:20px;}
+  .brand{display:flex;align-items:center;gap:12px;}
+  .logo{width:42px;height:42px;border-radius:10px;background:linear-gradient(135deg,var(--accent),var(--accent2));display:flex;align-items:center;justify-content:center;font-weight:800;color:#111;font-size:20px;}
+  h1{font-size:20px;font-weight:800;}
+  .brand span{display:block;font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;}
+  .week{font-size:13px;color:var(--muted);text-align:right;}
+  .week b{display:block;color:var(--text);font-size:15px;}
+  .refresh{margin-top:6px;background:transparent;border:1px solid var(--line);color:var(--text);font-size:12px;padding:6px 12px;border-radius:8px;cursor:pointer;}
+
+  .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:14px;margin:26px 0;}
+  .stat{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:20px;}
+  .stat .n{font-size:30px;font-weight:800;}
+  .stat .l{font-size:12.5px;color:var(--muted);margin-top:4px;}
+  .stat.green .n{color:var(--accent2);}
+  .stat.blue .n{color:var(--accent);}
+  .stat.red .n{color:var(--warn);}
+
+  .recon{background:linear-gradient(135deg,#201a05,#161203);border:1px solid var(--line);border-radius:16px;padding:22px;margin-bottom:26px;}
+  .recon h3{font-size:15px;margin-bottom:6px;}
+  .recon p{color:var(--muted);font-size:14px;}
+  .recon .total{font-size:34px;font-weight:800;background:linear-gradient(135deg,var(--accent),var(--accent2));-webkit-background-clip:text;background-clip:text;color:transparent;margin-top:6px;}
+
+  .cols{display:grid;grid-template-columns:1fr 1fr;gap:18px;}
+  .col{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:22px;}
+  .col h3{font-size:15px;margin-bottom:14px;display:flex;align-items:center;gap:8px;}
+  .dot{width:9px;height:9px;border-radius:50%;}
+  .dot.g{background:var(--accent2);} .dot.r{background:var(--warn);} .dot.b{background:var(--accent);}
+  .list{list-style:none;display:grid;gap:8px;max-height:340px;overflow:auto;}
+  .list li{font-size:14px;padding:9px 12px;background:#111;border:1px solid var(--line);border-radius:9px;color:var(--text);}
+  .empty{color:var(--muted);font-size:13px;padding:8px 0;}
+  .loading{text-align:center;color:var(--muted);padding:40px;}
+  .banner{background:#2a2118;border:1px solid #4a3a1f;color:#e8c98a;font-size:13px;padding:11px 14px;border-radius:10px;margin-bottom:20px;}
+  .hide{display:none;}
+  @media(max-width:680px){.stats{grid-template-columns:1fr 1fr;}.cols{grid-template-columns:1fr;}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="brand"><div class="logo">Z</div><div><h1>Zion Boxing</h1><span>Weekly payments dashboard</span></div></div>
+    <div class="week">Week starting<b id="weekLabel">...</b><button class="refresh" onclick="load()">Refresh</button></div>
+  </header>
+
+  <div id="demoBanner" class="banner hide">Demo mode with sample numbers. Connect the Google backend to see real data.</div>
+
+  <div id="content">
+    <div class="loading">Loading this week's numbers...</div>
+  </div>
+</div>
+
+<script>
+  /* ===== CONFIG: paste your Apps Script Web app URL between the quotes ===== */
+  var ENDPOINT = "https://script.google.com/macros/s/AKfycbxajP5Q9sv7NXo-gOIz_tmsMVCY7gfksdQFn3p2yWjh6SkMYYLluoOpyerx3DupqVml/exec";
+  /* ======================================================================= */
+
+  var demo = ENDPOINT.indexOf('PASTE_YOUR') > -1;
+  if (demo) document.getElementById('demoBanner').classList.remove('hide');
+
+  function money(n){ return '$' + (Number(n)||0).toFixed(2); }
+
+  function render(d){
+    document.getElementById('weekLabel').textContent = d.weekStarting || '-';
+    var weekly = d.weeklyNames || [];
+    var other = d.otherNames || [];
+
+    document.getElementById('content').innerHTML =
+      '<div class="stats">' +
+        '<div class="stat blue"><div class="n">'+money(d.weekTotal)+'</div><div class="l">Logged this week (card)</div></div>' +
+        '<div class="stat green"><div class="n">'+(d.weeklyCount||0)+'</div><div class="l">Weekly memberships ('+money(d.weeklyTotal)+')</div></div>' +
+        '<div class="stat"><div class="n">'+(d.singleCount||0)+'</div><div class="l">General sessions ('+money(d.singleTotal)+')</div></div>' +
+        '<div class="stat"><div class="n">'+(d.ptCount||0)+'</div><div class="l">1-on-1 sessions ('+money(d.ptTotal)+')</div></div>' +
+      '</div>' +
+      '<div class="recon"><h3>Reconcile with Square</h3>' +
+        '<p>This is every card payment logged through the check in page this week. Because it is card only, it should match your Square takings for the same Mon to Fri almost exactly. A gap means a card payment was taken without the form being filled in. Cash is not tracked here. Weekly memberships reset every Monday.</p>' +
+        '<div class="total">'+money(d.weekTotal)+'</div></div>' +
+      '<div class="cols">' +
+        '<div class="col"><h3><span class="dot g"></span>On a weekly membership ('+weekly.length+')</h3><ul class="list">' +
+          (weekly.length ? weekly.map(function(n){return '<li>'+n+'</li>';}).join('') : '<li class="empty">No weekly memberships logged yet this week.</li>') +
+        '</ul></div>' +
+        '<div class="col"><h3><span class="dot b"></span>General &amp; 1-on-1 visits ('+other.length+')</h3><ul class="list">' +
+          (other.length ? other.map(function(n){return '<li>'+n+'</li>';}).join('') : '<li class="empty">No general or 1-on-1 visits logged yet this week.</li>') +
+        '</ul></div>' +
+      '</div>';
+  }
+
+  function load(){
+    if (demo){
+      render({weekStarting:'2026-06-08',weekTotal:1100,weeklyTotal:900,weeklyCount:20,singleTotal:90,singleCount:6,ptTotal:110,ptCount:2,paymentsCount:28,
+        weeklyNames:['Sample Fighter One','Sample Fighter Two','Sample Fighter Three','Sample Fighter Four','Sample Fighter Five'],
+        otherNames:['Sample Visitor A  (single)','Sample Visitor B  (single)','Sample Visitor C  (1-on-1)']});
+      return;
+    }
+    var key = getKey();
+    if (!key){
+      document.getElementById('content').innerHTML = '<div class="loading">Password needed. <a href="#" onclick="location.reload();return false;" style="color:var(--accent)">Enter it</a>.</div>';
+      return;
+    }
+    window.__summary = function(d){
+      if (d && d.ok){ render(d); }
+      else if (d && d.error === 'unauthorized'){
+        localStorage.removeItem('zb_dash_key');
+        document.getElementById('content').innerHTML = '<div class="loading">Wrong password. <a href="#" onclick="location.reload();return false;" style="color:var(--accent)">Try again</a>.</div>';
+      } else {
+        document.getElementById('content').innerHTML = '<div class="loading">Could not load data.</div>';
+      }
+    };
+    var s = document.createElement('script');
+    s.src = ENDPOINT + '?action=summary&callback=__summary&key=' + encodeURIComponent(key) + '&t=' + (new Date()).getTime();
+    document.body.appendChild(s);
+  }
+
+  /* Ask for the dashboard password once, then remember it on this device. */
+  function getKey(){
+    var k = localStorage.getItem('zb_dash_key');
+    if (!k){
+      k = prompt('Enter the Zion Boxing dashboard password:');
+      if (k){ localStorage.setItem('zb_dash_key', k.trim()); k = k.trim(); }
+    }
+    return k;
+  }
+
+  load();
+</script>
+</body>
+</html>

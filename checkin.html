@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Zion Boxing | Check in your payment</title>
+<style>
+  :root{--bg:#0a0a0a;--panel:#141414;--panel2:#1c1c1c;--line:#2c2c2c;--text:#f2f2ee;--muted:#a3a39a;--accent:#ffd200;--accent2:#ffb300;--warn:#ff6b6b;}
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;background:radial-gradient(900px 500px at 50% -10%,#1c1808,var(--bg) 60%);color:var(--text);min-height:100vh;padding:24px;}
+  .card{max-width:460px;margin:24px auto;background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:26px;}
+  .brand{display:flex;align-items:center;gap:12px;margin-bottom:6px;}
+  .logo{width:40px;height:40px;border-radius:10px;background:linear-gradient(135deg,var(--accent),var(--accent2));display:flex;align-items:center;justify-content:center;font-weight:800;color:#111;}
+  h1{font-size:20px;font-weight:800;}
+  .sub{color:var(--muted);font-size:14px;margin:4px 0 22px;}
+
+  .products{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:6px;}
+  .product{border:1px solid var(--line);border-radius:14px;padding:16px 14px;background:#111;cursor:pointer;text-align:left;transition:.15s;}
+  .product.on{border-color:var(--accent);background:#201a05;}
+  .product .name{font-weight:800;font-size:15px;}
+  .product .price{font-size:22px;font-weight:800;margin-top:4px;}
+  .product.on .price{color:var(--accent2);}
+  .product .desc{font-size:12px;color:var(--muted);margin-top:4px;line-height:1.4;}
+
+  label{display:block;font-size:13px;color:var(--muted);margin:18px 0 7px;font-weight:600;}
+  label .req{color:var(--warn);}
+  .row{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+  .row label{margin-top:18px;}
+  input{width:100%;padding:14px;border-radius:11px;border:1px solid var(--line);background:#111;color:var(--text);font-size:16px;}
+  input:focus{outline:none;border-color:var(--accent);}
+
+  .declare{display:flex;gap:12px;align-items:flex-start;margin-top:22px;background:#111;border:1px solid var(--line);border-radius:12px;padding:14px;}
+  .declare input{width:22px;height:22px;flex:0 0 auto;margin-top:2px;accent-color:#5ee0a0;}
+  .declare label{margin:0;font-size:13px;color:var(--text);line-height:1.5;font-weight:500;}
+
+  .submit{width:100%;margin-top:22px;padding:16px;border:0;border-radius:12px;background:linear-gradient(135deg,var(--accent),var(--accent2));color:#111;font-size:17px;font-weight:800;cursor:pointer;}
+  .submit:disabled{opacity:.5;cursor:default;}
+  .note{font-size:12.5px;color:var(--muted);text-align:center;margin-top:16px;}
+  .privacy{font-size:11px;color:var(--muted);text-align:center;margin-top:12px;line-height:1.5;opacity:.85;border-top:1px solid var(--line);padding-top:14px;}
+  .done{text-align:center;padding:30px 10px;}
+  .done .tick{width:74px;height:74px;border-radius:50%;background:#201a05;border:2px solid var(--accent);color:var(--accent);font-size:38px;display:flex;align-items:center;justify-content:center;margin:0 auto 18px;}
+  .done h2{font-size:22px;margin-bottom:6px;}
+  .done p{color:var(--muted);}
+  .ghost{margin-top:20px;background:transparent;border:1px solid var(--line);color:var(--text);padding:13px;border-radius:11px;font-weight:700;cursor:pointer;width:100%;}
+  .hide{display:none;}
+  .banner{background:#2a2118;border:1px solid #4a3a1f;color:#e8c98a;font-size:12.5px;padding:10px 12px;border-radius:10px;margin-bottom:16px;}
+</style>
+</head>
+<body>
+<div class="card" id="formCard">
+  <div class="brand"><div class="logo">Z</div><div><h1>Zion Boxing</h1></div></div>
+  <p class="sub">Just paid by card on the Square machine? Fill in your details below so we can keep your record up to date.</p>
+
+  <div id="demoBanner" class="banner hide">Demo mode. Connect the Google backend to go live. Submissions are not saved yet.</div>
+
+  <label>What are you paying for?</label>
+  <div class="products">
+    <div class="product on" id="prod-weekly" onclick="setProduct('weekly')">
+      <div class="name">Weekly membership</div>
+      <div class="price">$40</div>
+      <div class="desc">Unlimited Mon to Fri this week</div>
+    </div>
+    <div class="product" id="prod-single" onclick="setProduct('single')">
+      <div class="name">General session</div>
+      <div class="price">$15</div>
+      <div class="desc">One session today</div>
+    </div>
+    <div class="product" id="prod-pt45" onclick="setProduct('pt45')">
+      <div class="name">1 on 1 session</div>
+      <div class="price">$50</div>
+      <div class="desc">45 minutes, one on one</div>
+    </div>
+    <div class="product" id="prod-pt60" onclick="setProduct('pt60')">
+      <div class="name">1 on 1 session</div>
+      <div class="price">$60</div>
+      <div class="desc">1 hour, one on one</div>
+    </div>
+  </div>
+
+  <div class="row">
+    <div>
+      <label>First name <span class="req">*</span></label>
+      <input id="firstName" type="text" autocomplete="given-name">
+    </div>
+    <div>
+      <label>Last name <span class="req">*</span></label>
+      <input id="lastName" type="text" autocomplete="family-name">
+    </div>
+  </div>
+
+  <label>Phone number <span class="req">*</span></label>
+  <input id="phone" type="tel" inputmode="tel" autocomplete="tel" placeholder="04xx xxx xxx">
+
+  <label>Email (optional)</label>
+  <input id="email" type="email" inputmode="email" autocomplete="email" placeholder="you@example.com">
+
+  <label>Amount paid (AUD) <span class="req">*</span></label>
+  <input id="amount" type="number" inputmode="decimal" value="40" min="0">
+
+  <div class="declare">
+    <input id="agree" type="checkbox">
+    <label for="agree">By submitting this form I confirm I have made payment for the session above, and I agree to abide by the gym's rules, policies and safety requirements while training at Zion Boxing.</label>
+  </div>
+
+  <button id="submitBtn" class="submit" onclick="submitPayment()">Confirm card payment</button>
+  <p class="note">Card payments only. A weekly membership covers Monday to Friday and resets each Monday.</p>
+  <p class="privacy">Zion Boxing collects your name, phone number and email only to manage your membership, keep payment records, and contact you about classes and gym updates. Your details are stored securely, are never shown to other members, and are not shared or sold to anyone else.</p>
+</div>
+
+<!-- Success -->
+<div class="card hide" id="doneCard">
+  <div class="done">
+    <div class="tick">&#10003;</div>
+    <h2>All done</h2>
+    <p id="doneMsg">Your payment has been recorded. Train hard.</p>
+    <button class="ghost" onclick="resetForm()">Record another</button>
+  </div>
+</div>
+
+<script>
+  /* ===== CONFIG: paste your Apps Script Web app URL between the quotes ===== */
+  var ENDPOINT = "https://script.google.com/macros/s/AKfycbxajP5Q9sv7NXo-gOIz_tmsMVCY7gfksdQFn3p2yWjh6SkMYYLluoOpyerx3DupqVml/exec";
+  /* ======================================================================= */
+
+  var PRODUCTS = {
+    weekly: { label: 'Weekly membership',  price: 40 },
+    single: { label: 'General session',    price: 15 },
+    pt45:   { label: '1-on-1 (45 min)',    price: 50 },
+    pt60:   { label: '1-on-1 (1 hour)',    price: 60 }
+  };
+  var product = 'weekly';
+  var demo = ENDPOINT.indexOf('PASTE_YOUR') > -1;
+
+  if (demo) document.getElementById('demoBanner').classList.remove('hide');
+
+  function setProduct(p){
+    product = p;
+    Object.keys(PRODUCTS).forEach(function(k){
+      document.getElementById('prod-'+k).classList.toggle('on', k===p);
+    });
+    document.getElementById('amount').value = PRODUCTS[p].price;
+  }
+
+  function val(id){ return document.getElementById(id).value.trim(); }
+
+  function submitPayment(){
+    var firstName = val('firstName');
+    var lastName  = val('lastName');
+    var phone     = val('phone');
+    var email     = val('email');
+    var amount    = val('amount');
+    var agreed    = document.getElementById('agree').checked;
+
+    if (!firstName || !lastName){ alert('Please enter your first and last name.'); return; }
+    if (!phone){ alert('Please enter your phone number.'); return; }
+    if (!amount){ alert('Please enter the amount you paid.'); return; }
+    if (!agreed){ alert('Please tick the box to confirm payment and agree to the gym rules.'); return; }
+
+    var btn = document.getElementById('submitBtn');
+    btn.disabled = true; btn.textContent = 'Saving...';
+
+    var payload = {
+      firstName: firstName,
+      lastName: lastName,
+      phone: phone,
+      email: email,
+      type: PRODUCTS[product].label,
+      amount: amount,
+      method: 'Card',
+      agreed: 'Yes'
+    };
+
+    if (demo){ setTimeout(showDone, 500); return; }
+
+    fetch(ENDPOINT, {
+      method: 'POST',
+      mode: 'no-cors',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify(payload)
+    }).then(showDone).catch(showDone);
+  }
+
+  function showDone(){
+    document.getElementById('formCard').classList.add('hide');
+    document.getElementById('doneCard').classList.remove('hide');
+  }
+  function resetForm(){
+    ['firstName','lastName','phone','email'].forEach(function(id){ document.getElementById(id).value=''; });
+    document.getElementById('agree').checked = false;
+    setProduct('weekly');
+    var btn = document.getElementById('submitBtn');
+    btn.disabled = false; btn.textContent = 'Confirm card payment';
+    document.getElementById('doneCard').classList.add('hide');
+    document.getElementById('formCard').classList.remove('hide');
+  }
+</script>
+</body>
+</html>
