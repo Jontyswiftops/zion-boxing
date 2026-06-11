@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Zion Boxing | Manage</title>
+<style>
+  :root{--bg:#0a0a0a;--panel:#141414;--line:#2c2c2c;--text:#f2f2ee;--muted:#a3a39a;--accent:#ffd200;--accent2:#ffb300;--warn:#ff6b6b;}
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;background:radial-gradient(900px 500px at 50% -10%,#1c1808,var(--bg) 60%);color:var(--text);min-height:100vh;padding:16px 14px 60px;}
+  .wrap{max-width:560px;margin:0 auto;}
+  header{display:flex;align-items:center;gap:12px;padding-bottom:14px;border-bottom:1px solid var(--line);margin-bottom:14px;}
+  .logo{width:38px;height:38px;border-radius:10px;background:linear-gradient(135deg,var(--accent),var(--accent2));display:flex;align-items:center;justify-content:center;font-weight:800;color:#111;flex:0 0 auto;}
+  h1{font-size:18px;font-weight:800;}
+  header span{display:block;font-size:11.5px;color:var(--muted);}
+  .tabs{display:flex;gap:8px;overflow-x:auto;padding-bottom:10px;margin-bottom:12px;-webkit-overflow-scrolling:touch;}
+  .tabs button{flex:0 0 auto;padding:10px 14px;border-radius:999px;border:1px solid var(--line);background:#111;color:var(--muted);font-weight:700;font-size:13.5px;cursor:pointer;white-space:nowrap;}
+  .tabs button.on{background:linear-gradient(135deg,var(--accent),var(--accent2));color:#111;border-color:transparent;}
+  .addbtn{width:100%;padding:13px;border-radius:12px;border:1px dashed var(--accent);background:transparent;color:var(--accent);font-weight:800;font-size:15px;cursor:pointer;margin-bottom:12px;}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:13px;padding:14px 16px;margin-bottom:9px;cursor:pointer;}
+  .card .t{font-weight:700;font-size:15px;}
+  .card .s{font-size:12.5px;color:var(--muted);margin-top:3px;}
+  .card .due{color:var(--accent);font-weight:600;}
+  .loading{text-align:center;color:var(--muted);padding:36px 0;font-size:14px;}
+  /* editor */
+  .editor{background:var(--panel);border:1px solid var(--accent);border-radius:14px;padding:18px;margin-bottom:14px;}
+  .editor h2{font-size:16px;margin-bottom:6px;}
+  label{display:block;font-size:12.5px;color:var(--muted);margin:13px 0 5px;font-weight:600;}
+  input,select{width:100%;padding:13px;border-radius:10px;border:1px solid var(--line);background:#111;color:var(--text);font-size:16px;}
+  input:focus,select:focus{outline:none;border-color:var(--accent);}
+  input[readonly]{opacity:.6;}
+  .btnrow{display:flex;gap:9px;margin-top:18px;}
+  .save{flex:1;padding:14px;border:0;border-radius:11px;background:linear-gradient(135deg,var(--accent),var(--accent2));color:#111;font-weight:800;font-size:15px;cursor:pointer;}
+  .cancel{padding:14px 16px;border:1px solid var(--line);border-radius:11px;background:transparent;color:var(--text);font-weight:700;cursor:pointer;}
+  .del{padding:14px 16px;border:1px solid #5a2727;border-radius:11px;background:transparent;color:var(--warn);font-weight:700;cursor:pointer;}
+  .hide{display:none;}
+  .note{font-size:11.5px;color:var(--muted);text-align:center;margin-top:18px;line-height:1.5;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="logo">Z</div>
+    <div><h1>Zion Boxing - Manage</h1><span>Edit your records. Changes save straight to the spreadsheet.</span></div>
+  </header>
+
+  <div class="tabs" id="tabBar"></div>
+  <div id="editor" class="editor hide"></div>
+  <button class="addbtn hide" id="addBtn" onclick="openEditor(-1)">+ Add new</button>
+  <div id="list"><div class="loading">Loading...</div></div>
+  <p class="note">Tap an item to edit it. Renewal dates here feed the automatic email reminders.<br>Payments cannot be edited from here.</p>
+</div>
+
+<script>
+  /* ===== CONFIG ===== */
+  var ENDPOINT = "https://script.google.com/macros/s/AKfycbxajP5Q9sv7NXo-gOIz_tmsMVCY7gfksdQFn3p2yWjh6SkMYYLluoOpyerx3DupqVml/exec";
+  /* ================== */
+
+  // Field types per tab. Must match the spreadsheet column order.
+  var TABS = {
+    'Compliance & Renewals': {short:'Renewals', fields:['text','text','text','date','date','number','status','text'], sub:[4,6], canAdd:true},
+    'Expenses':              {short:'Expenses', fields:['date','text','text','number','number','text','text'], sub:[0,3], canAdd:true},
+    'Inventory':             {short:'Inventory', fields:['text','text','number','text','date','text'], sub:[2,3], canAdd:true},
+    'Gear Servicing':        {short:'Gear', fields:['text','date','number','date','text','text'], sub:[3], canAdd:true},
+    'Class Programs':        {short:'Classes', fields:['text','text','text','text','text'], sub:[1,2], canAdd:true},
+    'Settings':              {short:'Settings', fields:['readonly','text'], sub:[1], canAdd:false}
+  };
+
+  var current = 'Compliance & Renewals';
+  var headers = [], rows = [];
+
+  function getKey(){
+    var k = localStorage.getItem('zb_dash_key');
+    if (!k){
+      k = prompt('Enter the Zion Boxing password:');
+      if (k){ k = k.trim(); localStorage.setItem('zb_dash_key', k); }
+    }
+    return k;
+  }
+
+  function buildTabs(){
+    var bar = document.getElementById('tabBar');
+    bar.innerHTML = Object.keys(TABS).map(function(t){
+      return '<button class="'+(t===current?'on':'')+'" onclick="switchTab(\''+t.replace(/'/g,"\\'")+'\')">'+TABS[t].short+'</button>';
+    }).join('');
+  }
+
+  function switchTab(t){
+    current = t;
+    closeEditor();
+    buildTabs();
+    loadTab();
+  }
+
+  function loadTab(){
+    var key = getKey();
+    if (!key){ document.getElementById('list').innerHTML = '<div class="loading">Password needed. Reload the page.</div>'; return; }
+    document.getElementById('list').innerHTML = '<div class="loading">Loading...</div>';
+    document.getElementById('addBtn').classList.add('hide');
+    window.__tab = function(d){
+      if (d && d.ok){ headers = d.headers; rows = d.rows; renderList(); }
+      else if (d && d.error === 'unauthorized'){ localStorage.removeItem('zb_dash_key'); document.getElementById('list').innerHTML='<div class="loading">Wrong password. Reload the page to try again.</div>'; }
+      else { document.getElementById('list').innerHTML='<div class="loading">Could not load. Check your internet and reload.</div>'; }
+    };
+    var s = document.createElement('script');
+    s.src = ENDPOINT + '?action=tab&tab=' + encodeURIComponent(current) + '&key=' + encodeURIComponent(key) + '&callback=__tab&t=' + (new Date()).getTime();
+    document.body.appendChild(s);
+  }
+
+  function fmt(v){
+    if (typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v)){
+      var p = v.split('-'); return p[2] + '/' + p[1] + '/' + p[0];
+    }
+    return v;
+  }
+
+  function renderList(){
+    var cfg = TABS[current];
+    document.getElementById('addBtn').classList.toggle('hide', !cfg.canAdd);
+    if (!rows.length){ document.getElementById('list').innerHTML = '<div class="loading">Nothing here yet. Tap + Add new.</div>'; return; }
+    document.getElementById('list').innerHTML = rows.map(function(r, i){
+      var title = r[0] || '(blank)';
+      var subBits = cfg.sub.map(function(ci){
+        var v = r[ci];
+        if (v === '' || v === null || v === undefined) return null;
+        return '<span class="due">' + headers[ci] + ': ' + fmt(v) + '</span>';
+      }).filter(Boolean).join(' &nbsp; ');
+      return '<div class="card" onclick="openEditor('+i+')"><div class="t">'+title+'</div>' + (subBits ? '<div class="s">'+subBits+'</div>' : '') + '</div>';
+    }).join('');
+  }
+
+  function openEditor(i){
+    var cfg = TABS[current];
+    var r = (i >= 0) ? rows[i] : headers.map(function(){ return ''; });
+    var html = '<h2>' + (i >= 0 ? 'Edit' : 'Add new') + '</h2>';
+    headers.forEach(function(h, ci){
+      var type = cfg.fields[ci] || 'text';
+      var val = (r[ci] === null || r[ci] === undefined) ? '' : String(r[ci]);
+      html += '<label>' + h + '</label>';
+      if (type === 'status'){
+        html += '<select id="f'+ci+'"><option'+(val!=='Done'?' selected':'')+'>Active</option><option'+(val==='Done'?' selected':'')+'>Done</option></select>';
+      } else if (type === 'date'){
+        html += '<input id="f'+ci+'" type="date" value="'+(/^\d{4}-\d{2}-\d{2}$/.test(val)?val:'')+'">';
+      } else if (type === 'number'){
+        html += '<input id="f'+ci+'" type="number" inputmode="decimal" step="any" value="'+val.replace(/"/g,'&quot;')+'">';
+      } else if (type === 'readonly'){
+        html += '<input id="f'+ci+'" type="text" readonly value="'+val.replace(/"/g,'&quot;')+'">';
+      } else {
+        html += '<input id="f'+ci+'" type="text" value="'+val.replace(/"/g,'&quot;')+'">';
+      }
+    });
+    html += '<div class="btnrow"><button class="save" onclick="saveRow('+i+')">Save</button>';
+    if (i >= 0 && cfg.canAdd) html += '<button class="del" onclick="deleteRow('+i+')">Delete</button>';
+    html += '<button class="cancel" onclick="closeEditor()">Cancel</button></div>';
+    var ed = document.getElementById('editor');
+    ed.innerHTML = html;
+    ed.classList.remove('hide');
+    window.scrollTo({top:0, behavior:'smooth'});
+  }
+
+  function closeEditor(){
+    var ed = document.getElementById('editor');
+    ed.classList.add('hide');
+    ed.innerHTML = '';
+  }
+
+  function post(payload, done){
+    payload.key = getKey();
+    fetch(ENDPOINT, { method:'POST', mode:'no-cors', headers:{'Content-Type':'text/plain;charset=utf-8'}, body: JSON.stringify(payload) })
+      .then(done).catch(done);
+  }
+
+  function saveRow(i){
+    var values = headers.map(function(h, ci){ return document.getElementById('f'+ci).value; });
+    if (!values[0] && TABS[current].canAdd){ alert('The first field needs a value.'); return; }
+    document.getElementById('list').innerHTML = '<div class="loading">Saving...</div>';
+    closeEditor();
+    post({ action:'saveRow', tab: current, rowNum: (i >= 0 ? i + 2 : 0), values: values }, function(){
+      setTimeout(loadTab, 1300);
+    });
+  }
+
+  function deleteRow(i){
+    if (!confirm('Delete this item? This cannot be undone.')) return;
+    document.getElementById('list').innerHTML = '<div class="loading">Deleting...</div>';
+    closeEditor();
+    post({ action:'deleteRow', tab: current, rowNum: i + 2 }, function(){
+      setTimeout(loadTab, 1300);
+    });
+  }
+
+  buildTabs();
+  loadTab();
+</script>
+</body>
+</html>
